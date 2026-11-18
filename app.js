@@ -115,7 +115,7 @@ const { GoogleGenAI } = require('@google/genai');
 
 const ai = new GoogleGenAI({
   vertexai: true,
-  project: 'cicdtraining-498421',
+  project: 'ci-cd-project-514500',
   location: 'global',
 });
 
