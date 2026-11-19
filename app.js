@@ -110,18 +110,23 @@ app.get('/metrics', async (req, res) => {
 })
 
 // ─── CONFIGURACIÓN GEMINI ──────────────────────────────────────────
-// ─── CONFIGURACIÓN GEMINI ──────────────────────────────────
+// Usa una API key gratuita de Google AI Studio (sin facturación).
+// Se lee de la variable GEMINI_API_KEY o del archivo .env
 const { GoogleGenAI } = require('@google/genai');
 
-const ai = new GoogleGenAI({
-  vertexai: true,
-  project: 'ci-cd-project-514500',
-  location: 'global',
-});
+try { process.loadEnvFile(); } catch { /* sin archivo .env */ }
+
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const ai = process.env.GEMINI_API_KEY
+  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  : null;
 
 async function callGemini(prompt) {
+  if (!ai) {
+    throw new Error('Gemini no está configurado: define GEMINI_API_KEY en el archivo .env');
+  }
   const response = await ai.models.generateContent({
-    model: 'gemini-3.5-flash',
+    model: GEMINI_MODEL,
     contents: prompt,
   });
   return response.text;

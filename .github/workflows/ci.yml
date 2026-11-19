@@ -1,0 +1,55 @@
+name: CI local (sin nube)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build imagen Docker
+        run: docker build -t mi-app:${{ github.sha }} .
+
+      - name: Levantar contenedor
+        run: |
+          docker run -d --name mi-app -p 8080:8080 mi-app:${{ github.sha }}
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/ && exit 0
+            sleep 1
+          done
+          docker logs mi-app
+          exit 1
+
+      - name: Probar endpoints
+        run: |
+          curl -sf http://localhost:8080/
+          curl -sf "http://localhost:8080/api/work?ms=50"
+          curl -sf http://localhost:8080/metrics | head -5
+
+      - name: Instalar k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Prueba de carga corta (k6)
+        run: k6 run -e SMOKE=true -e BASE_URL=http://localhost:8080 K6/load-test.js
+
+      - name: Logs del contenedor
+        if: always()
+        run: docker logs mi-app || true

@@ -7,8 +7,15 @@ const errorRate = new Rate('error_rate');
 const latencyTrend = new Trend('latency_ms');
 
 // ─── CONFIGURACIÓN DEL TEST ────────────────────────────────────────
+// SMOKE=true → prueba corta (usada en el pipeline de GitHub Actions)
+const SMOKE = __ENV.SMOKE === 'true';
+
 export const options = {
-  stages: [
+  stages: SMOKE ? [
+    { duration: '10s', target: 10 },
+    { duration: '20s', target: 10 },
+    { duration: '5s',  target: 0  },
+  ] : [
     { duration: '30s', target: 50  },  // Rampa: 0 → 50 usuarios
     { duration: '60s', target: 50  },  // Sostenido: 50 usuarios por 1 min
     { duration: '30s', target: 200 },  // Pico: sube a 200 usuarios
@@ -25,7 +32,7 @@ export const options = {
   },
 };
 
-const BASE_URL = 'https://mi-app-qboxpcbfpq-uc.a.run.app';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
 // ─── ESCENARIO PRINCIPAL ───────────────────────────────────────────
 export default function () {
@@ -46,7 +53,7 @@ export default function () {
   sleep(0.5);
 
   // 10% errores simulados
-  if (Math.random() < 0.1) {
+  if (!SMOKE && Math.random() < 0.1) {
     const r3 = http.get(`${BASE_URL}/api/work?ms=100&fail=true`);
     check(r3, { 'error 500': (r) => r.status === 500 });
     errorRate.add(r3.status !== 500);
